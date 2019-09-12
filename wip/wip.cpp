@@ -1,114 +1,118 @@
 #include <iostream>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <string.h>
+#include <unistd.h>
+#include <netdb.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
+#include <string>
+#include <vector>
+#include <chrono>
+#include <thread>
+// WIP
+#include <net/ethernet.h>
 
-// constexpr int MAXLINES {1024};
+int main(int argc, char* argv[])
+{
+    if(argc != 4){
+        std::cout << "Usage: client [ip] [portlow] [porthigh]" << std::endl;
+        exit(0);
+    }
 
-// int main(int argc, char *argv[]) {
+    int portlow = atoi(argv[2]);
+    int porthigh = atoi(argv[3]);
 
-//     if(argc != 4){
-//         std::cout << "Usage: scanner [ip] [low-port] [high-port]" << std::endl;
-//         exit(0);
-//     }
+    if(portlow > porthigh) {
+        std::cout << "Enter low port before high port" << std::endl;
+        std::cout << "Usage: client [ip] [portlow] [porthigh]" << std::endl;
+        exit(0);
+    }
 
-//     int sockfd {0};
-//     int lo_port {0};
-//     int hi_port {0};
-//     char buffer[MAXLINES];
-//     // OK, just fugured out you should not use std::string in conjunction with memset()
-//     std::string message = "Hello from client";
-//     struct sockaddr_in servaddr;
+    std::string message = "knock";
 
-//     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0))< 0){
-//         std::cerr << "socket creation failed" << std::endl;
-//         exit(-1);
-//     }
+    int UDP_sock;
+    int ICMP_sock;
+    int recvsock;
 
-//     // If we are not using C strings, but std::string do we need to use this memory allocater?
-//     memset(&servaddr, 0, sizeof(servaddr));
+    std::string ipAddress = argv[1];
 
-//     servaddr.sin_family = AF_INET;
-//     servaddr.sin_addr.s_addr = INADDR_ANY;
-//     // Here we need to use a whole range of ports
-//     // Possibly have a loop feed in the whole range from the input?
-//     servaddr.sin_port = htons(5000); // This hard-coded port is NON-SENSE
+    char ICMPResponse[512];
 
-//     int n {0};
-//     unsigned int len {0};
+    memset(ICMPResponse, 0x41, 512);
 
-//     sendto(sockfd, message.c_str(), message.size(), MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
-//     std::cout << "Hello message sent." << std::endl;
+    std::cout << "ICMPResponse init: \n -------------------------\n" << ICMPResponse << std::endl;
 
+    int ICMP_received {0};
 
-//     // n = recvfrom(sockfd, (char *)buffer, MAXLINES, MSG_WAITALL, (struct sockaddr *) &servaddr, &len);
-//     n = recvfrom(sockfd, (char *)buffer, MAXLINES, 0, (struct sockaddr *) &servaddr, &len);
-//     buffer[n] = '\0';
-//     std::cout << "Server: " << buffer << std::endl;
+    for(int i = portlow; i <= porthigh; i++){
 
-//     close(sockfd);
-//     return 0;
-// }
+        UDP_sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
+        ICMP_sock = socket(AF_INET, SOCK_RAW | SOCK_NONBLOCK , IPPROTO_ICMP);
+        // WIP - PACKET(7)
+        // recvsock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+        recvsock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL));
 
+        std::cout << "------------------" << std::endl;
+        std::cout << "UDP_sock: " << UDP_sock << " | ICMP_sock: " << ICMP_sock << " | recvsock: " << recvsock << std::endl;
 
-int main(int argc, char *argv[]) {
+        if (UDP_sock < 0) {
+            perror("Can't create a UDP socket");
+            return -1;
+        }
 
-	std::cout << "The number of arguments is " << argc << std::endl;
+        if (ICMP_sock < 0) {
+            perror("Can't create a ICMP socket");
+            return -1;
+        }
 
-    for(int i = 1; i < argc; ++i){
-        std::cout << "Argument " << i << " is: " << argv[i] << std::endl;
+        // WIP
+        if (recvsock < 0) {
+            perror("Can't create a recvsock socket");
+            return -1;
+        }
+
+        memset(ICMPResponse, 0, 512);
+
+        sockaddr_in sk_addr;
+        sk_addr.sin_family = AF_INET;
+        sk_addr.sin_port = htons(i);
+        inet_pton(AF_INET, ipAddress.c_str(), &sk_addr.sin_addr);
+
+        ICMP_received = -1;
+
+        std::cout << "------------------" << std::endl;
+        std::cout << "port: " << i << std::endl;
+        std::cout << "------------------" << std::endl;
+
+        int send{0};
+        for(int x = 0; x < 5; ++x){
+
+            std::cout << "send #" << x << std::endl;
+
+            send = sendto(UDP_sock, message.c_str(), message.size(), MSG_CONFIRM, (const struct sockaddr *) &sk_addr, sizeof(sk_addr));
+
+            std::cout << "send_int: " << send << std::endl;
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        for(int y = 1;ICMP_received != -1; ++y){
+            // ICMP_received = recvfrom(ICMP_sock, ICMPResponse, 512, 0, NULL,  NULL);
+            // WIP
+            ICMP_received = recvfrom(recvsock, ICMPResponse, 512, 0, NULL,  NULL);
+            std::cout << "atempt #" << y << std::endl;
+        }
+
+        std::cout << "output from ICMP_received: " << ICMP_received << std::endl;
+        std::cout << "output from ICMPResponse: " << ICMPResponse << std::endl;
+
+        // Close the sockets
+        close(UDP_sock);
+        close(ICMP_sock);
+        // WIP
+        close(recvsock);
+
     }
 
     return 0;
 }
-
-
-
-/************* UDP CLIENT CODE *******************/
-
-// #include <stdio.h>
-// #include <sys/socket.h>
-// #include <netinet/in.h>
-// #include <string.h>
-
-// int main(){
-//   int clientSocket, portNum, nBytes;
-//   char buffer[1024];
-//   struct sockaddr_in serverAddr;
-//   socklen_t addr_size;
-
-//   /*Create UDP socket*/
-//   clientSocket = socket(PF_INET, SOCK_DGRAM, 0);
-
-//   /*Configure settings in address struct*/
-//   serverAddr.sin_family = AF_INET;
-//   serverAddr.sin_port = htons(7891);
-//   serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-//   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
-
-//   /*Initialize size variable to be used later on*/
-//   addr_size = sizeof serverAddr;
-
-//   while(1){
-//     printf("Type a sentence to send to server:\n");
-//     fgets(buffer,1024,stdin);
-//     printf("You typed: %s",buffer);
-
-//     nBytes = strlen(buffer) + 1;
-
-//     /*Send message to server*/
-//     sendto(clientSocket,buffer,nBytes,0,(struct sockaddr *)&serverAddr,addr_size);
-
-//     /*Receive message from server*/
-//                 nBytes = recvfrom(clientSocket,buffer,1024,0,NULL, NULL);
-
-//     printf("Received from server: %s\n",buffer);
-
-//   }
-
-//   return 0;
-// }

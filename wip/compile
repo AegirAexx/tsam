@@ -1,3 +1,0 @@
-#!/bin/bash
-
-g++ -O2 -Wall -std=gnu++17 scanner.cpp -o scanner && echo "Yippee kayak other mother!"
