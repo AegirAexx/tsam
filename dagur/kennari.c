@@ -25,8 +25,8 @@
 #include <vector>
 #include <chrono>
 #include <thread>
-/* 
-    96 bit (12 bytes) pseudo header needed for udp header checksum calculation 
+/*
+    96 bit (12 bytes) pseudo header needed for udp header checksum calculation
 */
 struct pseudo_header
 {
@@ -36,16 +36,16 @@ struct pseudo_header
     u_int8_t protocol;
     u_int16_t udp_length;
 };
- 
+
 /*
     Generic checksum calculation function
 */
-unsigned short csum(unsigned short *ptr,int nbytes) 
+unsigned short csum(unsigned short *ptr,int nbytes)
 {
     register long sum;
     unsigned short oddbyte;
     register short answer;
- 
+
     sum=0;
     while(nbytes>1) {
         sum+=*ptr++;
@@ -56,52 +56,52 @@ unsigned short csum(unsigned short *ptr,int nbytes)
         *((u_char*)&oddbyte)=*(u_char*)ptr;
         sum+=oddbyte;
     }
- 
+
     sum = (sum>>16)+(sum & 0xffff);
     sum = sum + (sum>>16);
     answer=(short)~sum;
-     
+
     return(answer);
 }
- 
+
 int main (void)
 {
     //Create a raw socket of type IPPROTO
     int s = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
-     
+
     if(s == -1)
     {
         //socket creation failed, may be because of non-root privileges
         perror("Failed to create raw socket");
         exit(1);
     }
-     
+
     //Datagram to represent the packet
     char datagram[4096] , source_ip[32] , *data , *pseudogram;
-     
+
     //zero out the packet buffer
     memset (datagram, 0, 4096);
-     
+
     //IP header
     struct iphdr *iph = (struct iphdr *) datagram;
-     
+
     //UDP header
     struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
-    
+
     struct sockaddr_in sin;
     struct pseudo_header psh;
-    
+
     //Data part
     data = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
     strcpy(data , "knock");
-    
+
     //some address resolution
     strcpy(source_ip , "192.168.1.2");  //myIp, þarf að fá það dynamically
-    
+
     sin.sin_family = AF_INET;
     sin.sin_port = htons(4033);
     sin.sin_addr.s_addr = inet_addr ("130.208.243.61");
-    
+
     //Fill in the IP Header
     iph->ihl = 5;
     iph->version = 4;
@@ -114,16 +114,16 @@ int main (void)
     iph->check = 0;      //Set to 0 before calculating checksum
     iph->saddr = inet_addr ( source_ip );    //Spoof the source ip address
     iph->daddr = sin.sin_addr.s_addr;
-     
+
     //Ip checksum
     iph->check = csum ((unsigned short *) datagram, iph->tot_len);
-     
+
     //UDP header
     udph->source = htons (6666);  //nota svarið frá Servernum til að búa til þetta, source portið verður destination port og öfugt
-    udph->dest = htons (8622);  
+    udph->dest = htons (8622);
     udph->len = htons(8 + strlen(data)); //tcp header size
     udph->check = 0; //leave checksum 0 now, filled later by pseudo header
-     
+
     // Get bara breytt data-inu, það er það eina sem ég get stýrt, samkvæmt dæmatímakennaranum, er það rétt? þarf að laga gögnin
     // Þarf bara að laga gögnin
     // Get sockname þarf ég að nota til að vita hvaða sock ég er með
@@ -136,15 +136,15 @@ int main (void)
     psh.placeholder = 0;
     psh.protocol = IPPROTO_UDP;
     psh.udp_length = htons(sizeof(struct udphdr) + strlen(data) );
-     
+
     int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
     pseudogram = malloc(psize);
-     
+
     memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
     memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
-     
+
     udph->check = csum( (unsigned short*) pseudogram , psize);
-     
+
     //loop if you want to flood :)
     //while (1)
     {
@@ -159,8 +159,8 @@ int main (void)
             printf ("Packet Send. Length : %d \n" , iph->tot_len);
         }
     }
-     
+
     return 0;
 }
- 
-//Complete 
+
+//Complete

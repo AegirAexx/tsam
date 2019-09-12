@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
         // DEBUG - REMOVE
         std::cout << "UDP: " << UDP_received << std::endl;
         std::cout << "ICMP: " << ICMP_received << std::endl;
+        std::cout << "ICMP response: " << ICMPResponse[0] << std::endl;
         // --------------
 
         // If there is there has been an UDP answer from the server, push it to the custom datatype to the data structure.

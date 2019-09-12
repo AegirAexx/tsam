@@ -25,7 +25,7 @@ struct openPort {
     }
 };
 
-// 
+//
 void packet_dump(char *buf, const unsigned int len)
 {
         unsigned char c;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 
         // Assign two sockets - UDP and ICMP
         UDP_sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
-        ICMP_sock = socket(AF_INET, SOCK_RAW | SOCK_NONBLOCK , IPPROTO_ICMP);
+        ICMP_sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 
         // DEBUG - REMOVE
         std::cout << "checking port: " << i << std::endl;
@@ -178,23 +178,25 @@ int main(int argc, char* argv[])
         }
         printf("\n");
 
-        packet_dump(ICMPResponse, ICMP_received);
+        if(ICMP_received != -1) {
+            packet_dump(ICMPResponse, ICMP_received);
+        }
 
         struct icmp *icmp = (struct icmp *)(ICMPResponse + sizeof(ip_hdr));
 
 
         /*
         // Check the IP header
-        ip = (struct ip *)((char*)packet); 
-        hlen = sizeof( struct ip ); 
-        if (ret < (hlen + ICMP_MINLEN)) 
-        { 
+        ip = (struct ip *)((char*)packet);
+        hlen = sizeof( struct ip );
+        if (ret < (hlen + ICMP_MINLEN))
+        {
             cerr << "packet too short (" << ret  << " bytes) from " << hostname << endl;;
-            return -1; 
-        } 
+            return -1;
+        }
 
-        // Now the ICMP part 
-        icp = (struct icmp *)(packet + hlen); 
+        // Now the ICMP part
+        icp = (struct icmp *)(packet + hlen);
         if (icp->icmp_type == ICMP_ECHOREPLY)
         {
             if (icp->icmp_seq != 12345)
