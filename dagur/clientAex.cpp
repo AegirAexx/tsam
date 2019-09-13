@@ -11,6 +11,23 @@
 // Compile flag for threading
 // -pthread
 
+//BITSHIFT MAGIC TO GRAB PORT
+// #include <bitset>
+// unsigned short a = buffer[50];
+// unsigned short b = buffer[51];
+// b &= 0xF0;
+// // short port;
+// // memcpy(&port, a, sizeof(port));
+// a = (a << 8);
+// a |= b;
+// // std::bitset<16> x(a);
+// // std::bitset<16> y(b);
+// std::cout << a << std::endl;
+
+// TO GET THE LOCAL IP DYNAMICALLY USE THIS AS FIRST ARGUMENT: "$(hostname -I | cut -d " " -f 1)"
+// e.g.: "sudo ./u.out $(hostname -I | cut -d " " -f 1) 130.208.243.61 4000 4100 > debug.txt"
+
+
 #include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -98,18 +115,18 @@ unsigned short csum(unsigned short *ptr, int nbytes){
 int main(int argc, char* argv[]){
 
     // Check user input
-    if(argc != 4){
-        std::cout << "Usage: client [ip] [portlow] [porthigh]" << std::endl;
+    if(argc != 5){
+        std::cout << "Usage: ./scanner [local IP] [server IP] [portlow] [porthigh]" << std::endl;
         exit(0);
     }
 
     // User input
-    int portlow = atoi(argv[2]);
-    int porthigh = atoi(argv[3]);
+    int portlow = atoi(argv[3]);
+    int porthigh = atoi(argv[4]);
 
     if(portlow > porthigh) {
         std::cout << "Enter low port before high port" << std::endl;
-        std::cout << "Usage: client [ip] [portlow] [porthigh]" << std::endl;
+        std::cout << "Usage: ./scanner [local IP] [server IP] [portlow] [porthigh]" << std::endl;
         exit(0);
     }
 
@@ -124,11 +141,12 @@ int main(int argc, char* argv[]){
     int ICMP_sock;
     // int sendSock;
 
-    //ip address to connect to comes from first parameter.
-    std::string ipAddress = argv[1];
+    // $(hostname -I | cut -d " " -f 1)
+    std::string sourceAddress = argv[1];
 
-    // hostname -I
-    std::string sourceAddress = "10.3.17.142";
+    //ip address to connect to comes from first parameter.
+    std::string ipAddress = argv[2];
+
 
     // Two buffers for responses.
     char UDPResponse[1024];
@@ -222,7 +240,7 @@ int main(int argc, char* argv[]){
         iph->version = 4;
         iph->tos = 0;
         iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data);
-        iph->id = htonl (54321); //Id of this packet
+        iph->id = htonl (54321); //Id of this packet - DOES NOT SEEM TO MATTER WHAT VALUE IS HERE. DYNAMIC???
         iph->frag_off = 0; // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
         iph->ttl = 255;
         iph->protocol = IPPROTO_UDP; // WHAT IS THE POINT OF THE SAME THING IN socket() ABOVE?????
@@ -232,6 +250,7 @@ int main(int argc, char* argv[]){
 
         // IP checksum
         // TIPS FROM THE GUYS ABOVE!!!!
+        // HERE WE SHOULD USE THE PSEUDOGRAM TO BE ABLE TO SPOOF THE CHECKSUM!
         iph->check = csum ((unsigned short *) datagram, iph->tot_len);
 
         // UDP header
@@ -323,6 +342,7 @@ int main(int argc, char* argv[]){
         }
 
         struct icmp *icmp = (struct icmp *)(ICMPResponse + sizeof(ip_hdr));
+
         std::cout << "--------------------------" << std::endl;
         std::cout << std::endl;
         std::cout << std::endl;
