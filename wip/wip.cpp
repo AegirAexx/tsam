@@ -12,6 +12,7 @@
 #include <chrono>
 #include <thread>
 #include <stdio.h>
+#include <bitset>
 
 // Checksum function from the internetz
 unsigned short csum(unsigned short *ptr, int nbytes){
@@ -41,7 +42,10 @@ unsigned short csum(unsigned short *ptr, int nbytes){
 
 int main(int argc, char* argv[]){
 
-    // CHECKSUM PLAYGROUND
+    std::cout << "Parameters to the program:" << std::endl;
+    for(int i = 0; i < argc; ++i){
+        std::cout << "#" << i << " is " << argv[i] << std::endl;
+    }
 
     return 0;
 }
