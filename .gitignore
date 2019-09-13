@@ -22,5 +22,8 @@
 # Ignore all local history of files
 .history
 
+## OUTPUT FILES ##
+*.out
+
 
 # End of https://www.gitignore.io/api/text
