@@ -12,6 +12,7 @@
 #include <thread>
 #include <netinet/ip_icmp.h>
 #include <chrono>
+#include <iterator>
 
 
 // Structures
@@ -27,7 +28,14 @@ struct port{
 
 struct openPort{
     int port_no;
+    bool isReceived = false;
     std::string message {0};
+    std::string payload {0};
+    bool isEvil = false;
+    bool isOracle = false;
+    bool isPortfwd = false;
+    bool isChecksum = false;
+
 
     // Public member function to initialize the datatype (constructor).
     void init (int port) {
@@ -123,7 +131,7 @@ int main(int argc, char* argv[]){
 
     sendOpenThread.join();
     recvUDPPacketThread.join();
-    
+
     return 0;
 }
 
@@ -166,7 +174,7 @@ void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &send
 
         struct timeval timeout;
         timeout.tv_sec = 5;
-        timeout.tv_usec = 10;
+        timeout.tv_usec = 0;
 
         int setSockOpt = setsockopt(recvSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
@@ -381,14 +389,14 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
             std::perror("### Create UDP_socket failed");
         }
 
-        //setsockopt
-        // int val = 1;
-        // int sockoption = setsockopt(sendSocket, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val));
 
-        // if(sockoption < 0) {
-        //     perror("setsockopt HDRINCL_IP failed");
-        //     exit(0);
-        // }
+        int val = 1;
+        int sockoption = setsockopt(sendSocket, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val));
+
+        if(sockoption < 0) {
+            perror("setsockopt HDRINCL_IP failed");
+            exit(0);
+        }
 
         // ***** create header ****
 
@@ -412,7 +420,12 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
         iph->tos = 0;
         iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data.c_str());
         iph->id = htonl (54321); //Id of this packet - DOES NOT SEEM TO MATTER WHAT VALUE IS HERE. DYNAMIC???
-        iph->frag_off = 0;//htons(0x8000); // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
+        if(openPorts[port].isEvil) {
+            iph->frag_off |= htons(0x8000); // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
+        }
+        else {
+            iph->frag_off = 0; // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
+        }
         iph->ttl = 255;
         iph->protocol = IPPROTO_UDP; // WHAT IS THE POINT OF THE SAME THING IN socket() ABOVE?????
         iph->check = 0;      //Set to 0 before calculating checksum
@@ -472,6 +485,7 @@ void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<open
     unsigned int received_len {0};
     int bound {0};
     char buffer[1024] {0};
+    char *data;
 
     while (!sendIsDone) {
 
@@ -502,8 +516,8 @@ void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<open
 
 
         struct timeval timeout;
-        timeout.tv_sec = 5;
-        timeout.tv_usec = 10;
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
 
         int setSockOpt = setsockopt(recvSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
@@ -526,20 +540,37 @@ void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<open
 
             portPtr = (short *)&buffer[20];
 
-            //std::cout << "PortPtr: " << htons(*portPtr) << std::endl;
-            //std::cout << c << std::endl;
+            //std::cout << "PortPtr: " << htons(*portPtr) << std::endl;b
+            //std::cout << c << std::endl;b
             int sourcePort = htons(*portPtr);
 
             //convert-a data partinum i streng
-            
-            // finna rett stak i vektornum
-            
-            //update message i vektornum med data partinum
+            data = buffer + sizeof(struct iphdr) + sizeof (struct udphdr);
 
-            //tha erum vid komnir med allt sem vid thurfum til ad vinna med
+            //std::cout << "Source port: " << sourcePort << std::endl;
+            //std::cout << "data: " << data << std::endl;
+
+            // finna rett stak i vektornum
+            int index;
+
+            for(unsigned int i = 0; i < openPorts.size(); ++i) {
+                if(openPorts[i].port_no == sourcePort) {
+                    index = i;
+                }
+            }
+            
+            if (openPorts[index].isReceived == false) {
+                openPorts[index].isReceived = true;
+
+                openPorts[index].message = data;
+                std::cout << "Message from port# " << sourcePort << " is: " << std::endl;
+                std::cout << data << std::endl;
+            }
+
+            //Herna finnum vid ut hver er hvad, isEvil, isOracle, isPortMongo, isChecksum
         }
 
-        printByteArray(sizeof(buffer), buffer);
+        //printByteArray(sizeof(buffer), buffer);
 
 
         memset(buffer, 0, 1024);
