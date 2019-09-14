@@ -5,31 +5,58 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <thread>
+#include <netinet/ip_icmp.h>
+#include <chrono>
 
 
 // Structures
-struct openPort{
-    int port;
-    std::string message;
+struct port{
+    int portno;
+    bool isReceived = false;
 
     // Member function to initialize the datatype (constructor).
-    void init (int port, std::string message) {
-        this->port = port;
-        this->message = message;
+    void init (int portno) {
+        this->portno = portno;
     }
 };
 
+struct openPort{
+    int port_no;
+    std::string message {0};
+
+    // Public member function to initialize the datatype (constructor).
+    void init (int port) {
+        this->port_no = port;
+    }
+};
+
+// Custom header from the internetz
+struct pseudo_header{
+    u_int32_t source_address;
+    u_int32_t dest_address;
+    u_int8_t placeholder;
+    u_int8_t protocol;
+    u_int16_t udp_length;
+};
 
 // Functions prototypes.
-void udpBasic(int portlow, int porthigh, std::string destinationAddress);
+//ATH faerobreytur hugsanlega tharf ekki porthigh
+void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &sendIsDone, std::vector<port> &ports);
 
-void icmpBasic(int portlow, int porthigh, std::string destinationAddress);
+void sendPacket(int portlow, int porthigh, std::string destinationAddress, std::string sourceAddress, bool &sendIsDone);
+
+void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, bool &sendIsDone, std::vector<openPort> &openPorts);
+
+void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<openPort> &openPorts);
 
 void printByteArray(int bufferLength, char buffer[]);
 
+unsigned short csum(unsigned short *ptr, int nbytes);
 
 // Main program.
 int main(int argc, char* argv[]){
@@ -40,11 +67,15 @@ int main(int argc, char* argv[]){
         exit(0);
     }
 
+    // **********  Port scanner
+    bool sendIsDone = false;
+
     // Variables for user input arguments.
     std::string sourceAddress (argv[1]);
     std::string destinationAddress (argv[2]);
     int portlow {atoi(argv[3])};
     int porthigh {atoi(argv[4])};
+
 
     // Check port range.
     if(portlow > porthigh) {
@@ -53,151 +84,245 @@ int main(int argc, char* argv[]){
         exit(0);
     }
 
+    std::vector<port> ports;
+
+    for(int i = portlow; i <= porthigh; ++i) {
+        port scanPort;
+        scanPort.init(i);
+        ports.push_back(scanPort);
+    }
+
+    std::thread sendThread (sendPacket, portlow, porthigh, destinationAddress, sourceAddress, std::ref(sendIsDone));
+    std::thread recvThread (recvPacket, portlow, porthigh, sourceAddress, std::ref(sendIsDone), std::ref(ports));
+
+    sendThread.join();
+    recvThread.join();
+
+
+    /// *********** send to open ports
+    sendIsDone = false;
+
     std::vector<openPort> openPorts;
 
-    // Basic UPD - Works on known ports.
-    // udpBasic(portlow, porthigh, destinationAddress);
+    for(unsigned int i = 0; i < ports.size(); ++i) {
+        if(ports[i].isReceived == false) {
+            openPort openPort;
 
-    // Basic ICMP - Works on known ports.
-    icmpBasic(portlow, porthigh, destinationAddress);
+            openPort.port_no = ports[i].portno;
 
+            openPorts.push_back(openPort);
+        }
+    }
+
+    for(unsigned int i = 0; i < openPorts.size(); ++i) {
+        std::cout << "Open Port is# " << openPorts[i].port_no << std::endl;
+    }
+
+    std::thread sendOpenThread (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
+    std::thread recvUDPPacketThread (recvUDPPacket, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
+
+    sendOpenThread.join();
+    recvUDPPacketThread.join();
+    
     return 0;
 }
 
 
-void udpBasic(int portlow, int porthigh, std::string destinationAddress){
+void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &sendIsDone, std::vector<port> &ports){
 
-    int UDP_socket {0};
-    int UDP_received {-1};
-    unsigned int UDP_received_len {0};
-    int UDP_bound {0};
-    int UDP_delivered {0};
-    char UDP_buffer[1024] {0};
+    int recvSocket {0};
+    int received {-1};
+    unsigned int received_len {0};
+    int bound {0};
+    char buffer[1024] {0};
 
-    for(int port {portlow}; port <= porthigh; port++){
-
-        sockaddr_in socketAddress;
-        socketAddress.sin_family = AF_INET;
-        socketAddress.sin_port = htons(port);
-        inet_pton(AF_INET, destinationAddress.c_str(), &socketAddress.sin_addr);
-
-        UDP_socket = socket(
-            AF_INET,
-            SOCK_DGRAM,
-            0
-        );
-
-        if(UDP_socket < 0){
-            std::perror("### Create socket failed");
-        }
-
-        UDP_bound = bind(
-            UDP_socket,
-            (struct sockaddr *) &socketAddress,
-            sizeof(struct sockaddr_in)
-        );
-
-        if(UDP_bound < 0){
-            std::perror("### Failed to bind");
-        }
-
-        UDP_delivered = sendto(
-            UDP_socket,
-            "knock",
-            5,
-            0, // --MSG_CONFIRM?
-            (const struct sockaddr *) &socketAddress,
-            sizeof(socketAddress)
-        );
-
-        std::cout << "Packet size delivered: " << UDP_delivered << std::endl;
-
-        UDP_received = recvfrom(
-            UDP_socket,
-            UDP_buffer,
-            1024,
-            0,
-            (struct sockaddr *) &socketAddress,
-            &UDP_received_len
-        );
-
-        std::cout << "Response length:  " << UDP_received << std::endl;
-        std::cout << "Response: " << UDP_buffer << std::endl;
-
-        memset(UDP_buffer, 0, 1024);
-
-    }
-
-}
-
-
-void icmpBasic(int portlow, int porthigh, std::string destinationAddress){
-
-    int UDP_socket {0};
-    int ICMP_socket {0};
-    int ICMP_received {-1};
-    unsigned int ICMP_received_len {0};
-    int ICMP_delivered {0};
-    char ICMP_buffer[1024] {0};
-
-    for(int port {portlow}; port <= porthigh; port++){
+    while (!sendIsDone) {
 
         sockaddr_in socketAddress;
         socketAddress.sin_family = AF_INET;
-        socketAddress.sin_port = htons(port);
-        inet_pton(AF_INET, destinationAddress.c_str(), &socketAddress.sin_addr);
+        socketAddress.sin_port = htons(50000);
+        inet_pton(AF_INET, sourceAddress.c_str(), &socketAddress.sin_addr);
 
-        UDP_socket = socket(
-            AF_INET,
-            SOCK_DGRAM,
-            0
-        );
-
-        ICMP_socket = socket(
+        recvSocket = socket(
             AF_INET,
             SOCK_RAW,
             IPPROTO_ICMP
         );
 
-        if(UDP_socket < 0){
-            std::perror("### Create UDP_socket failed");
+        if(recvSocket < 0){
+            std::perror("### Create socket failed");
         }
 
-        if(ICMP_socket < 0){
-            std::perror("### Create ICMP_socket failed");
-        }
-
-
-        ICMP_delivered = sendto(
-            UDP_socket,
-            "knock",
-            5,
-            0,
-            (const struct sockaddr *) &socketAddress,
-            sizeof(socketAddress)
+        bound = bind(
+            recvSocket,
+            (struct sockaddr *) &socketAddress,
+            sizeof(struct sockaddr_in)
         );
 
-        std::cout << "Packet size delivered: " << ICMP_delivered << std::endl;
+        if(bound < 0){
+            std::perror("### Failed to bind");
+        }
 
-        ICMP_received = recvfrom(
-            ICMP_socket,
-            ICMP_buffer,
+
+        struct timeval timeout;
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 10;
+
+        int setSockOpt = setsockopt(recvSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
+        if(setSockOpt < 0){
+            std::perror("### Failed to set sock opt");
+        }
+
+        received = recvfrom(
+            recvSocket,
+            buffer,
             1024,
             0,
             (struct sockaddr *) &socketAddress,
-            &ICMP_received_len
+            &received_len
         );
 
-        std::cout << "Response length:  " << ICMP_received << std::endl;
+        //std::cout << "Response length:  " << received << std::endl;
+        //std::cout << "Response: " << std::endl;
 
-        std::cout << "Response: " << std::endl;;
-        printByteArray(ICMP_received, ICMP_buffer);
+        //printByteArray(received, buffer);
 
+        if(received > 0) {
+        
+            short * portPtr;
 
+            portPtr = (short *)&buffer[50];
 
-        memset(ICMP_buffer, 0, 1024);
+            //std::cout << "PortPtr: " << htons(*portPtr) << std::endl;
+            //std::cout << c << std::endl;
+            int currentPort = htons(*portPtr);
+            int index = currentPort - portlow;
 
+            unsigned char *ICMPcode;
+
+            ICMPcode = (unsigned char*) &buffer[21];
+
+            int code = ((htons(*ICMPcode) >> 8) & 0xffff);
+        
+            if (code == 3 && ports[index].isReceived == false) {
+                ports[index].isReceived = true;
+                std::cout << "ICMP message code is " << code << " therefore" << std::endl;
+                std::cout << "Port# " << currentPort << " is closed" << std::endl;
+            }
+        }
+
+        memset(buffer, 0, 1024);
     }
+
+}
+
+
+void sendPacket(int portlow, int porthigh, std::string destinationAddress, std::string sourceAddress, bool &sendIsDone){
+
+    int sendSocket {0};
+    //int messageDelivered {0};
+    std::string data = "knock";
+
+    for(int port {portlow}; port <= porthigh; port++){
+
+        sockaddr_in socketAddress;
+        socketAddress.sin_family = AF_INET;
+        socketAddress.sin_port = htons(port);
+        inet_pton(AF_INET, destinationAddress.c_str(), &socketAddress.sin_addr);
+
+        sendSocket = socket(
+            AF_INET,
+            SOCK_RAW,
+            IPPROTO_RAW
+        );
+
+        if(sendSocket < 0){
+            std::perror("### Create UDP_socket failed");
+        }
+
+        //setsockopt
+        // int val = 1;
+        // int sockoption = setsockopt(sendSocket, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val));
+
+        // if(sockoption < 0) {
+        //     perror("setsockopt HDRINCL_IP failed");
+        //     exit(0);
+        // }
+
+        // ***** create header ****
+
+        //datagram til ad halda utan um pakkann
+        char datagram[4096] {0}, *pseudogram;
+
+        //IP og UDP header
+        struct iphdr *iph = (struct iphdr *) datagram;
+
+        struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct iphdr));
+
+        //pseudo header buinn til
+        struct pseudo_header psh;
+
+        //data sett aftan vid udp header
+        data = datagram + sizeof(struct iphdr) + sizeof (struct udphdr);
+
+        //Fill in the IP Header
+        iph->ihl = 5;
+        iph->version = 4;
+        iph->tos = 0;
+        iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data.c_str());
+        iph->id = htonl (54321); //Id of this packet - DOES NOT SEEM TO MATTER WHAT VALUE IS HERE. DYNAMIC???
+        iph->frag_off = 0;//htons(0x8000); // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
+        iph->ttl = 255;
+        iph->protocol = IPPROTO_UDP; // WHAT IS THE POINT OF THE SAME THING IN socket() ABOVE?????
+        iph->check = 0;      //Set to 0 before calculating checksum
+        iph->saddr = inet_addr (sourceAddress.c_str());    //Spoof the source ip address
+        iph->daddr = socketAddress.sin_addr.s_addr;
+
+        // IP checksum
+
+        iph->check = csum ((unsigned short *) datagram, iph->tot_len);
+
+        // UDP header
+        udph->source = htons (50000);  //nota svarið frá Servernum til að búa til þetta, source portið verður destination port og öfugt
+        udph->dest = htons (port);
+        udph->len = htons(8 + data.size()); //tcp header size
+        udph->check = 0; //leave checksum 0 now, filled later by pseudo header
+
+        // Now the UDP checksum using the pseudo header
+        psh.source_address = inet_addr(sourceAddress.c_str());
+        psh.dest_address = socketAddress.sin_addr.s_addr;
+        psh.placeholder = 0;
+        psh.protocol = IPPROTO_UDP;
+        psh.udp_length = htons(sizeof(struct udphdr) + data.size() );
+
+        int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + data.size();
+
+        //muna ad gera free
+        pseudogram = (char*) malloc(psize);
+
+        //pusla saman pseudoheader + UDP heade + data
+        memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+        memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + data.size());
+
+        //Reikna ut UDP checksum
+        udph->check = csum((unsigned short*) pseudogram , psize);
+
+        //send message
+        for(int i = 0; i < 5; ++i) {
+            sendto(
+                sendSocket,
+                datagram,
+                iph->tot_len,
+                MSG_CONFIRM,
+                (const struct sockaddr *) &socketAddress,
+                sizeof(socketAddress)
+            );
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
+    }
+
+    sendIsDone = true;
 }
 
 void printByteArray(int bufferLength, char buffer[]){
@@ -206,4 +331,217 @@ void printByteArray(int bufferLength, char buffer[]){
         printf("%02X%s", (uint8_t)buffer[i], (i + 1)%16 ? " " : "\n");
     }
     std::cout << std::endl;
+}
+
+unsigned short csum(unsigned short *ptr, int nbytes){
+    register long sum;
+    unsigned short oddbyte;
+    register short answer;
+
+    sum = 0;
+
+    while(nbytes > 1){
+        sum += *ptr++;
+        nbytes -= 2;
+    }
+
+    if(nbytes == 1){
+        oddbyte = 0;
+        *((u_char*) &oddbyte) = *(u_char*) ptr;
+        sum += oddbyte;
+    }
+
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum = sum + (sum >> 16);
+    answer = (short) ~sum;
+
+    return(answer);
+}
+
+void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, bool &sendIsDone, std::vector<openPort> &openPorts) {
+
+    int sendSocket {0};
+    //int messageDelivered {0};
+    std::string data = "knock";
+
+    for(unsigned int port = 0; port < openPorts.size(); port++){
+
+        sockaddr_in socketAddress;
+        socketAddress.sin_family = AF_INET;
+        socketAddress.sin_port = htons(port);
+        inet_pton(AF_INET, destinationAddress.c_str(), &socketAddress.sin_addr);
+
+        sendSocket = socket(
+            AF_INET,
+            SOCK_RAW,
+            IPPROTO_RAW
+        );
+
+        if(sendSocket < 0){
+            std::perror("### Create UDP_socket failed");
+        }
+
+        //setsockopt
+        // int val = 1;
+        // int sockoption = setsockopt(sendSocket, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val));
+
+        // if(sockoption < 0) {
+        //     perror("setsockopt HDRINCL_IP failed");
+        //     exit(0);
+        // }
+
+        // ***** create header ****
+
+        //datagram til ad halda utan um pakkann
+        char datagram[4096] {0}, *pseudogram;
+
+        //IP og UDP header
+        struct iphdr *iph = (struct iphdr *) datagram;
+
+        struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct iphdr));
+
+        //pseudo header buinn til
+        struct pseudo_header psh;
+
+        //data sett aftan vid udp header
+        data = datagram + sizeof(struct iphdr) + sizeof (struct udphdr);
+
+        //Fill in the IP Header
+        iph->ihl = 5;
+        iph->version = 4;
+        iph->tos = 0;
+        iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data.c_str());
+        iph->id = htonl (54321); //Id of this packet - DOES NOT SEEM TO MATTER WHAT VALUE IS HERE. DYNAMIC???
+        iph->frag_off = 0;//htons(0x8000); // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
+        iph->ttl = 255;
+        iph->protocol = IPPROTO_UDP; // WHAT IS THE POINT OF THE SAME THING IN socket() ABOVE?????
+        iph->check = 0;      //Set to 0 before calculating checksum
+        iph->saddr = inet_addr (sourceAddress.c_str());    //Spoof the source ip address
+        iph->daddr = socketAddress.sin_addr.s_addr;
+
+        // IP checksum
+
+        iph->check = csum ((unsigned short *) datagram, iph->tot_len);
+
+        // UDP header
+        udph->source = htons (50000);  //nota svarið frá Servernum til að búa til þetta, source portið verður destination port og öfugt
+        udph->dest = htons (openPorts[port].port_no);
+        udph->len = htons(8 + data.size()); //tcp header size
+        udph->check = 0; //leave checksum 0 now, filled later by pseudo header
+
+        // Now the UDP checksum using the pseudo header
+        psh.source_address = inet_addr(sourceAddress.c_str());
+        psh.dest_address = socketAddress.sin_addr.s_addr;
+        psh.placeholder = 0;
+        psh.protocol = IPPROTO_UDP;
+        psh.udp_length = htons(sizeof(struct udphdr) + data.size() );
+
+        int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + data.size();
+
+        //muna ad gera free
+        pseudogram = (char*) malloc(psize);
+
+        //pusla saman pseudoheader + UDP heade + data
+        memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+        memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + data.size());
+
+        //Reikna ut UDP checksum
+        udph->check = csum((unsigned short*) pseudogram , psize);
+
+        //send message
+        for(int i = 0; i < 5; ++i) {
+            sendto(
+                sendSocket,
+                datagram,
+                iph->tot_len,
+                MSG_CONFIRM,
+                (const struct sockaddr *) &socketAddress,
+                sizeof(socketAddress)
+            );
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
+    }
+
+    sendIsDone = true;
+}
+
+void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<openPort> &openPorts) {
+    
+    int recvSocket {0};
+    int received {-1};
+    unsigned int received_len {0};
+    int bound {0};
+    char buffer[1024] {0};
+
+    while (!sendIsDone) {
+
+        sockaddr_in socketAddress;
+        socketAddress.sin_family = AF_INET;
+        socketAddress.sin_port = htons(50000);
+        inet_pton(AF_INET, sourceAddress.c_str(), &socketAddress.sin_addr);
+
+        recvSocket = socket(
+            AF_INET,
+            SOCK_RAW,
+            IPPROTO_UDP
+        );
+
+        if(recvSocket < 0){
+            std::perror("### Create socket failed");
+        }
+
+        bound = bind(
+            recvSocket,
+            (struct sockaddr *) &socketAddress,
+            sizeof(struct sockaddr_in)
+        );
+
+        if(bound < 0){
+            std::perror("### Failed to bind");
+        }
+
+
+        struct timeval timeout;
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 10;
+
+        int setSockOpt = setsockopt(recvSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
+        if(setSockOpt < 0){
+            std::perror("### Failed to set sock opt");
+        }
+
+        received = recvfrom(
+            recvSocket,
+            buffer,
+            1024,
+            0,
+            (struct sockaddr *) &socketAddress,
+            &received_len
+        );
+
+        if(received > 0) {
+        
+            short * portPtr;
+
+            portPtr = (short *)&buffer[20];
+
+            //std::cout << "PortPtr: " << htons(*portPtr) << std::endl;
+            //std::cout << c << std::endl;
+            int sourcePort = htons(*portPtr);
+
+            //convert-a data partinum i streng
+            
+            // finna rett stak i vektornum
+            
+            //update message i vektornum med data partinum
+
+            //tha erum vid komnir med allt sem vid thurfum til ad vinna med
+        }
+
+        printByteArray(sizeof(buffer), buffer);
+
+
+        memset(buffer, 0, 1024);
+    }
 }
