@@ -28,7 +28,7 @@ void udpBasic(int portlow, int porthigh, std::string destinationAddress);
 
 void icmpBasic(int portlow, int porthigh, std::string destinationAddress);
 
-void printByteArray(int ICMP_received, char ICMP_buffer[]);
+void printByteArray(int bufferLength, char buffer[]);
 
 
 // Main program.
@@ -41,8 +41,8 @@ int main(int argc, char* argv[]){
     }
 
     // Variables for user input arguments.
-    std::string sourceAddress {argv[1]};
-    std::string destinationAddress {argv[2]};
+    std::string sourceAddress (argv[1]);
+    std::string destinationAddress (argv[2]);
     int portlow {atoi(argv[3])};
     int porthigh {atoi(argv[4])};
 
@@ -56,10 +56,10 @@ int main(int argc, char* argv[]){
     std::vector<openPort> openPorts;
 
     // Basic UPD - Works on known ports.
-    udpBasic(portlow, porthigh, destinationAddress);
+    // udpBasic(portlow, porthigh, destinationAddress);
 
     // Basic ICMP - Works on known ports.
-    // icmpBasic(portlow, porthigh, destinationAddress);
+    icmpBasic(portlow, porthigh, destinationAddress);
 
     return 0;
 }
