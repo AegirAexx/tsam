@@ -17,17 +17,17 @@
 
 // Structures
 struct port{
-    int portno;
+    int portNumber;
     bool isReceived = false;
 
     // Member function to initialize the datatype (constructor).
-    void init (int portno) {
-        this->portno = portno;
+    void init (int portNumber) {
+        this->portNumber = portNumber;
     }
 };
 
 struct openPort{
-    int port_no;
+    int portNumber;
     bool isReceived = false;
     std::string message {0};
     std::string payload {0};
@@ -38,8 +38,8 @@ struct openPort{
 
 
     // Public member function to initialize the datatype (constructor).
-    void init (int port) {
-        this->port_no = port;
+    void init (int portNumber) {
+        this->portNumber = portNumber;
     }
 };
 
@@ -76,17 +76,17 @@ int main(int argc, char* argv[]){
     }
 
     // **********  Port scanner
-    bool sendIsDone = false;
+    bool sendIsDone {false};
 
     // Variables for user input arguments.
     std::string sourceAddress (argv[1]);
     std::string destinationAddress (argv[2]);
-    int portlow {atoi(argv[3])};
-    int porthigh {atoi(argv[4])};
+    int portLow {atoi(argv[3])};
+    int portHigh {atoi(argv[4])};
 
 
     // Check port range.
-    if(portlow > porthigh) {
+    if(portLow > portHigh) {
         std::cout << "Enter the lower port before the higher port" << std::endl;
         std::cout << "Usage: ./scanner [source IP] [destination IP] [port low] [port high]" << std::endl;
         exit(0);
@@ -94,14 +94,14 @@ int main(int argc, char* argv[]){
 
     std::vector<port> ports;
 
-    for(int i = portlow; i <= porthigh; ++i) {
+    for(int i = portLow; i <= portHigh; ++i) {
         port scanPort;
         scanPort.init(i);
         ports.push_back(scanPort);
     }
 
-    std::thread sendThread (sendPacket, portlow, porthigh, destinationAddress, sourceAddress, std::ref(sendIsDone));
-    std::thread recvThread (recvPacket, portlow, porthigh, sourceAddress, std::ref(sendIsDone), std::ref(ports));
+    std::thread sendThread (sendPacket, portLow, portHigh, destinationAddress, sourceAddress, std::ref(sendIsDone));
+    std::thread recvThread (recvPacket, portLow, portHigh, sourceAddress, std::ref(sendIsDone), std::ref(ports));
 
     sendThread.join();
     recvThread.join();
@@ -112,18 +112,18 @@ int main(int argc, char* argv[]){
 
     std::vector<openPort> openPorts;
 
-    for(unsigned int i = 0; i < ports.size(); ++i) {
+    for(size_t i = 0; i < ports.size(); ++i) {
         if(ports[i].isReceived == false) {
             openPort openPort;
 
-            openPort.port_no = ports[i].portno;
+            openPort.portNumber = ports[i].portNumber;
 
             openPorts.push_back(openPort);
         }
     }
 
     for(unsigned int i = 0; i < openPorts.size(); ++i) {
-        std::cout << "Open Port is# " << openPorts[i].port_no << std::endl;
+        std::cout << "Open Port is# " << openPorts[i].portNumber << std::endl;
     }
 
     std::thread sendOpenThread (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
@@ -438,7 +438,7 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
 
         // UDP header
         udph->source = htons (50000);  //nota svarið frá Servernum til að búa til þetta, source portið verður destination port og öfugt
-        udph->dest = htons (openPorts[port].port_no);
+        udph->dest = htons (openPorts[port].portNumber);
         udph->len = htons(8 + data.size()); //tcp header size
         udph->check = 0; //leave checksum 0 now, filled later by pseudo header
 
@@ -554,7 +554,7 @@ void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<open
             int index;
 
             for(unsigned int i = 0; i < openPorts.size(); ++i) {
-                if(openPorts[i].port_no == sourcePort) {
+                if(openPorts[i].portNumber == sourcePort) {
                     index = i;
                 }
             }
