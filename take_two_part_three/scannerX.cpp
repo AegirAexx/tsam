@@ -230,7 +230,7 @@ void sendPacket(int portlow, int porthigh, std::string destinationAddress, std::
 
     int sendSocket {0};
     //int messageDelivered {0};
-    std::string data = "knock";
+    std::string data = "ping";
 
     for(int port {portlow}; port <= porthigh; port++){
 
@@ -361,7 +361,7 @@ unsigned short csum(unsigned short *ptr, int nbytes){
 
     sum = (sum >> 16) + (sum & 0xffff);
     sum = sum + (sum >> 16);
-    answer = (short) ~sum;
+    answer = (short) sum; //taka tilde i burtu til ad fa sum i stad csum
 
     return(answer);
 }
@@ -370,7 +370,7 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
 
     int sendSocket {0};
     //int messageDelivered {0};
-    std::string data = "knock";
+    char* data;
 
     for(unsigned int port = 0; port < openPorts.size(); port++){
 
@@ -414,11 +414,13 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
         //data sett aftan vid udp header
         data = datagram + sizeof(struct iphdr) + sizeof (struct udphdr);
 
+        strcpy(data, "aa");
+
         //Fill in the IP Header
         iph->ihl = 5;
         iph->version = 4;
         iph->tos = 0;
-        iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data.c_str());
+        iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + sizeof(data);
         iph->id = htonl (54321); //Id of this packet - DOES NOT SEEM TO MATTER WHAT VALUE IS HERE. DYNAMIC???
         if(openPorts[port].isEvil) {
             iph->frag_off |= htons(0x8000); // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
@@ -433,13 +435,13 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
         iph->daddr = socketAddress.sin_addr.s_addr;
 
         // IP checksum
+        iph->check = ~(csum ((unsigned short *) datagram, iph->tot_len));
 
-        iph->check = csum ((unsigned short *) datagram, iph->tot_len);
 
         // UDP header
         udph->source = htons (50000);  //nota svarið frá Servernum til að búa til þetta, source portið verður destination port og öfugt
         udph->dest = htons (openPorts[port].portNumber);
-        udph->len = htons(8 + data.size()); //tcp header size
+        udph->len = htons(8 + 2); //tcp header size
         udph->check = 0; //leave checksum 0 now, filled later by pseudo header
 
         // Now the UDP checksum using the pseudo header
@@ -447,19 +449,41 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
         psh.dest_address = socketAddress.sin_addr.s_addr;
         psh.placeholder = 0;
         psh.protocol = IPPROTO_UDP;
-        psh.udp_length = htons(sizeof(struct udphdr) + data.size() );
+        psh.udp_length = htons(sizeof(struct udphdr) + 2); //herna tharf data ad vera 2
 
-        int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + data.size();
+        int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr);
 
         //muna ad gera free
         pseudogram = (char*) malloc(psize);
 
         //pusla saman pseudoheader + UDP heade + data
         memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-        memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + data.size());
+        memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr));
 
         //Reikna ut UDP checksum
-        udph->check = csum((unsigned short*) pseudogram , psize);
+        //if checksum
+
+        short cum = csum((unsigned short*) pseudogram , psize);
+        std::cout << "Cumsum ur fallinu: " << std::hex << udph->check << std::endl;
+        std::cout << "Cumsum invert ur fallinu: " << std::hex << ~udph->check << std::endl;
+
+        unsigned short target = 0x0ff2;
+        std::cout << "CheckNum: " << std::hex << target << std::endl;
+
+        udph->check = htons(0xf00d);
+
+        short d = htons(0x0ff2) - cum;
+
+        std::cout << "dataSum: " << std::hex << d << std::endl;
+
+        //skrifa hardkodad inn i data holfin til ad profa mismunandi gildi
+        u_char as = d;
+        u_char af = (d >> 8);
+
+        data[0] = as;
+        data[1] = af;
+
+
 
         //send message
         for(int i = 0; i < 5; ++i) {
