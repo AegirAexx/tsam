@@ -19,7 +19,10 @@ void printArguments(int argc, char* argv[]);
 
 int main(int argc, char* argv[]){
 
-    printArguments(argc, argv);
+    // printArguments(argc, argv);
+    char d[4096];
+
+    std::cout << sizeof(d) << std::endl;
 
     return 0;
 }
