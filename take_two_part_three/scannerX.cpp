@@ -197,7 +197,7 @@ void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &send
         //printByteArray(received, buffer);
 
         if(received > 0) {
-        
+
             short * portPtr;
 
             portPtr = (short *)&buffer[50];
@@ -212,7 +212,7 @@ void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &send
             ICMPcode = (unsigned char*) &buffer[21];
 
             int code = ((htons(*ICMPcode) >> 8) & 0xffff);
-        
+
             if (code == 3 && ports[index].isReceived == false) {
                 ports[index].isReceived = true;
                 std::cout << "ICMP message code is " << code << " therefore" << std::endl;
@@ -479,7 +479,7 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
 }
 
 void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<openPort> &openPorts) {
-    
+
     int recvSocket {0};
     int received {-1};
     unsigned int received_len {0};
@@ -535,7 +535,7 @@ void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<open
         );
 
         if(received > 0) {
-        
+
             short * portPtr;
 
             portPtr = (short *)&buffer[20];
@@ -558,7 +558,7 @@ void recvUDPPacket(std::string sourceAddress, bool &sendIsDone, std::vector<open
                     index = i;
                 }
             }
-            
+
             if (openPorts[index].isReceived == false) {
                 openPorts[index].isReceived = true;
 
