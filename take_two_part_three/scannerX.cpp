@@ -19,6 +19,7 @@
 struct port{
     int portNumber;
     bool isReceived = false;
+    std::string myIp;
 
     // Member function to initialize the datatype (constructor).
     void init (int portNumber) {
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]){
 
     // Check user input arguments.
     if(argc != 5){
-        std::cout << "Usage: ./scanner [source IP] [destination IP] [port low] [port high]" << std::endl;
+        std::cout << "Usage: ./scanner [destination IP] [port low] [port high]" << std::endl;
         exit(0);
     }
 
@@ -126,11 +127,11 @@ int main(int argc, char* argv[]){
         std::cout << "Open Port is# " << openPorts[i].portNumber << std::endl;
     }
 
-    std::thread sendOpenThread (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
-    std::thread recvUDPPacketThread (recvUDPPacket, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
+    // std::thread sendOpenThread (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
+    // std::thread recvUDPPacketThread (recvUDPPacket, sourceAddress, std::ref(sendIsDone), std::ref(openPorts));
 
-    sendOpenThread.join();
-    recvUDPPacketThread.join();
+    // sendOpenThread.join();
+    // recvUDPPacketThread.join();
 
     return 0;
 }
@@ -202,6 +203,7 @@ void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &send
 
             portPtr = (short *)&buffer[50];
 
+
             //std::cout << "PortPtr: " << htons(*portPtr) << std::endl;
             //std::cout << c << std::endl;
             int currentPort = htons(*portPtr);
@@ -213,10 +215,28 @@ void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &send
 
             int code = ((htons(*ICMPcode) >> 8) & 0xffff);
 
+            unsigned char * myIp1, *myIp2, *myIp3, *myIp4;
+
+            myIp1 = (unsigned char*) &buffer[40];
+            myIp2 = (unsigned char*) &buffer[41];
+            myIp3 = (unsigned char*) &buffer[42];
+            myIp4 = (unsigned char*) &buffer[43];
+
+            int ip1 = ((htons(*myIp1) >> 8) & 0xffff);
+            int ip2 = ((htons(*myIp2) >> 8) & 0xffff);
+            int ip3 = ((htons(*myIp3) >> 8) & 0xffff);
+            int ip4 = ((htons(*myIp4) >> 8) & 0xffff);
+
+            std::string ipAddress(std::to_string(ip1) + "." + std::to_string(ip2) + "." + std::to_string(ip3) + "." + std::to_string(ip4));
+
             if (code == 3 && ports[index].isReceived == false) {
                 ports[index].isReceived = true;
+                ports[index].myIp = ipAddress;
                 std::cout << "ICMP message code is " << code << " therefore" << std::endl;
                 std::cout << "Port# " << currentPort << " is closed" << std::endl;
+                std::cout << "myIp: " << ipAddress << std::endl;
+
+                //printByteArray(512, buffer);
             }
         }
 
@@ -326,7 +346,7 @@ void sendPacket(int portlow, int porthigh, std::string destinationAddress, std::
                 (const struct sockaddr *) &socketAddress,
                 sizeof(socketAddress)
             );
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }
 
@@ -361,7 +381,7 @@ unsigned short csum(unsigned short *ptr, int nbytes){
 
     sum = (sum >> 16) + (sum & 0xffff);
     sum = sum + (sum >> 16);
-    answer = (short) sum; //taka tilde i burtu til ad fa sum i stad csum
+    answer = (short) ~sum; //taka tilde i burtu til ad fa sum i stad csum
 
     return(answer);
 }
@@ -463,7 +483,7 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
         //Reikna ut UDP checksum
         //if checksum
 
-        short cum = csum((unsigned short*) pseudogram , psize);
+        short cum = csum((unsigned short*) pseudogram , psize); //tharf ad ~
         std::cout << "Cumsum ur fallinu: " << std::hex << udph->check << std::endl;
         std::cout << "Cumsum invert ur fallinu: " << std::hex << ~udph->check << std::endl;
 
