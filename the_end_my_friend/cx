@@ -1,0 +1,18 @@
+#!/bin/bash
+# The pied piper | cowsay | lolcat GNU C++ Compiler script.
+# a3xx && dagurdagur
+
+n=$(( RANDOM %= 9 ))
+
+Line[1]="Anyone who tells you their platform is faster than ours better have good lawyers"
+Line[2]="Take a look at the Conjoined Triangles of Success. Now, what do those two triangles make together?"
+Line[3]="If we can make your audio and video files smaller, we can make cancer smaller. And hunger. And... AIDS."
+Line[4]="I'm sorry, Gavin. It's Apple Maps bad."
+Line[5]="Might it not be more innovative to shroud Nucleus in mystery until the official roll out next January?"
+Line[6]="In case you didn't know, here at Hooli, we make the impossible possible."
+Line[7]="Data shortages, data rationing, data black markets. Someone's compression will save the world from data-geddon, and it sure as hell better be Nucleus and not goddamn Pied Piper!"
+Line[8]="I don't know about you people, but I don't wanna live in a world where someone else makes the world a better place better than we do."
+
+
+
+g++ -O2 -Wall -std=gnu++11 -pthread *.cpp -o scanner && echo "${Line[n]}" | cowsay | lolcat
