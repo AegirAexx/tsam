@@ -1,0 +1,6 @@
+#!/bin/bash
+
+LO="$1"
+HI="$2"
+
+sudo ./u.out 130.208.243.61 $LO $HI > debug.txt
