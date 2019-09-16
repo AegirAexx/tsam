@@ -87,12 +87,24 @@ void customRecv(std::string sourceAddress, openPort &openPort, bool &isSent);
 void customSend(std::string destinationAddress, std::string sourceAddress, openPort &openPort, bool &isSent);
 
 
+// TODO: LOOK INTO CLOSING SOCKETS ON SEND AND RECV!
+// FIXME: CLOSE SOCKET.
+
+
 // COM: Main program.
 int main(int argc, char* argv[]) {
+    bool isVerbose {false};
 
     // COM: Check user input arguments.
     if(argc != 4) {
-        std::cout << "Usage: ./scanner [destination IP] [port low] [port high]" << std::endl;
+        if(argc != 5) {
+            std::cout << "Usage: ./scanner [destination IP] [port low] [port high]" << std::endl;
+            exit(0);
+        }
+        if(argv[4] == "--verbose" || argv[4] == "-v") {
+            isVerbose = true;
+        }
+        std::cout << "Usage: ./scanner [destination IP] [port low] [port high] --verbose" << std::endl;
         exit(0);
     }
 
@@ -289,7 +301,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-// COM: The Main receiver function. Accepts ICMP packets. DAGUR: Remove a DEBUG: FLAG??
+// COM: The Main receiver function. Accepts ICMP packets.
 void recvPacket(int portlow, int porthigh, std::string sourceAddress, bool &isSent, std::vector<port> &ports) {
 
     int recvSocket {0};

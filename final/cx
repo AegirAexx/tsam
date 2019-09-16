@@ -13,4 +13,6 @@ Line[6]="In case you didn't know, here at Hooli, we make the impossible possible
 Line[7]="Data shortages, data rationing, data black markets. Someone's compression will save the world from data-geddon, and it sure as hell better be Nucleus and not goddamn Pied Piper!"
 Line[8]="I don't know about you people, but I don't wanna live in a world where someone else makes the world a better place better than we do."
 
-g++ -O2 -Wall -std=gnu++11 -pthread *.cpp -o u.out && echo "${Line[n]}" | cowsay | lolcat
+
+
+g++ -O2 -Wall -std=gnu++17 -pthread *.cpp -o u.out && echo "${Line[n]}" | cowsay | lolcat
