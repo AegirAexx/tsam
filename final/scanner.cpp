@@ -58,6 +58,9 @@ struct openPort {
     bool isChecksum = false;
     bool isReceived = false;
     bool isLastStand = false;
+    bool isFinalMessage = false;
+    bool isMasterOfTheUniverse = false;
+    //bool isFinalMessage = false;
     // FEAT: Add toggle() function for boolean?
     void initialize (int portNumber) {
         this->portNumber = portNumber;
@@ -82,10 +85,6 @@ void recvUDPPacket(std::string sourceAddress, bool &isSent, std::vector<openPort
 unsigned short checksum(unsigned short *ptr, int nbytes);
 std::string getIP();
 
-// TODO: REMOVE???
-void customRecv(std::string sourceAddress, openPort &openPort, bool &isSent);
-void customSend(std::string destinationAddress, std::string sourceAddress, openPort &openPort, bool &isSent);
-
 
 // TODO: LOOK INTO CLOSING SOCKETS ON SEND AND RECV!
 // FIXME: CLOSE SOCKET.
@@ -107,6 +106,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage: ./scanner [destination IP] [port low] [port high] --verbose" << std::endl;
         exit(0);
     }
+
+    // PART: Part one: Port scanner.
 
     // COM: Part one: Port scanner.
     // COM:
@@ -158,12 +159,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    for(size_t i {0}; i < openPorts.size(); ++i) {
-        std::cout << "Open Port is# " << openPorts[i].portNumber << std::endl; // DEBUG:
-        std::cout << "message " << openPorts[i].message << std::endl; // DEBUG:
-        std::cout << "payload " << openPorts[i].payload << std::endl; // DEBUG:
-    }
+    // for(size_t i {0}; i < openPorts.size(); ++i) {
+    //     std::cout << "Open Port is# " << openPorts[i].portNumber << std::endl; // DEBUG:
+    //     std::cout << "message " << openPorts[i].message << std::endl; // DEBUG:
+    //     std::cout << "payload " << openPorts[i].payload << std::endl; // DEBUG:
+    // }
 
+    // PART: Part two: Initial contact with open ports. Update payload for Portfwd
     // COM: The second wave of threads. Recieve UDP. Only go if there are any open ports.
     if(openPorts.size() > 0) {
         std::thread sendOpenThread (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(isSent), std::ref(openPorts));
@@ -176,33 +178,34 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
-
+    // PART: Part three: Deliver and update paylod from Evilbit and Checksum.
     // COM: Part Three: The port interaction.
     // COM:
 
-    // TODO:
-    // FIXME:
-    std::string oraclePayload;
+    std::string oraclePayload("");
     int oracleIndex;
     std::string secretPhrase;
     isSent = false;
 
+    //Setja false a alla i open ports
     for(size_t i {0}; i < openPorts.size(); ++i) {
         openPorts[i].isReceived = false; // FEAT: A toggle function would be awesome.
     }
 
+    //sendum aftur a alla nema nu vitum vid hver er evil og cumsom os.frv. og sendum eftir tvi
     std::thread sendThread2 (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(isSent), std::ref(openPorts));
     std::thread recvUDPPacketThread2 (recvUDPPacket, sourceAddress, std::ref(isSent), std::ref(openPorts));
     recvUDPPacketThread2.join();
     sendThread2.join();
 
+    // PART: Part four: Set up to send correct ports to Oracle.
     for(size_t i {0}; i < openPorts.size(); ++i) {
         std::cout << "Open Port is# " << openPorts[i].portNumber << std::endl; // DEBUG:
         std::cout << "message " << openPorts[i].message << std::endl; // DEBUG:
         std::cout << "payload " << openPorts[i].payload << std::endl; // DEBUG:
     }
 
-
+    // fara i gegnum oll portin og gera videigandi adgerdir vid evil, cumsuum o.s.frv
     for(size_t i {0}; i < openPorts.size(); ++i) {
 
         if(openPorts[i].isEvil) {
@@ -218,66 +221,104 @@ int main(int argc, char* argv[]) {
                 }
                 evil = match.suffix().str();
             }
-            oraclePayload.append(tempStr);
+            oraclePayload += tempStr + ",";
+            std::cout << "Tempstr ******************8: " << tempStr << std::endl; // DEBUG:
         }
         else if (openPorts[i].isPortfwd) {
-            oraclePayload.append(openPorts[i].payload);
+            oraclePayload += openPorts[i].payload + ",";
+            std::cout << "PortMongo ***************8: " << openPorts[i].payload << std::endl; // DEBUG:
         }
         else if (openPorts[i].isChecksum) {
             // COM: Setting up a RegEx search.
             std::string check(openPorts[i].message);
             std::smatch match;
-            std::regex expression("(How).*\\!");
+            std::regex expression("\"(.*?)\"");
             std::string tempStr;
             std::cout << "openPorts[i].message :" << openPorts[i].message << std::endl; // DEBUG:
             // COM: Create the new string.
-            while(std::regex_search (check, match, expression)) {
-                for(auto x : match) {
-                    tempStr.append(x);
-                }
-                check = match.suffix().str();
+            // while(std::regex_search (check, match, expression)) {
+            //     for(auto x : match) {
+            //         tempStr += x;
+            //     }
+            //     check = match.suffix().str();
+            // }
+            if(std::regex_search (check, match, expression)) {
+                tempStr = match.str(1);
             }
 
             std::cout << "tempStr :" << tempStr << std::endl; // DEBUG:
             // COM: We have the secret Phrase.
             secretPhrase.append(tempStr);
-
-            openPorts[i].isLastStand = true;
         }
         else if (openPorts[i].isOracle){
             oracleIndex = i;
         }
     }
 
-    // HACK: NOT NEEDED. WE JUST PICK OUT THE PORTS WITH REGEX.
+    //Laga kommu
     oraclePayload.erase(oraclePayload.size() - 1, oraclePayload.size() - 1);
 
     std::cout << "oracleIndex " << oracleIndex << std::endl; // DEBUG:
     std::cout << "oraclePayload " << oraclePayload << std::endl; // DEBUG:
     std::cout << "secretPhrase " << secretPhrase << std::endl; // DEBUG:
 
-    openPorts[oracleIndex].payload.append(oraclePayload);
+    //hlada
+    openPorts[oracleIndex].payload = oraclePayload;
+    openPorts[oracleIndex].isLastStand = true;
+    openPorts[oracleIndex].isReceived = false;
 
     // DAGUR: senda a oracle og receive-a skilabodin tilbaka og geyma i payload
 
+    //setjum false tvi vid aetlum ad senda a alla
     isSent = false;
 
+    //Herna er oracle ad fa payload og message i oracle aetti ad vera knock knock rodin eftir thetta
     std::thread sendToOracleThread (sendToOpenPorts, destinationAddress, sourceAddress, std::ref(isSent), std::ref(openPorts));
     std::thread recvFromOracleThread (recvUDPPacket, sourceAddress, std::ref(isSent), std::ref(openPorts));
     sendToOracleThread.join();
     recvFromOracleThread.join();
 
-
+    // PART: Part five: Set up & send on correct ports according to the Oracle.
     // DAGUR: bua til vector af opnum portum med portunum sem vid faum  ur message
     std::vector<openPort> lastMessage;
+    std::cout << "Knock knock rod: " << openPorts[oracleIndex].message << std::endl; // DEBUG:
+
+    //Vinna ur knock knock rod
+
+    std::string knockKnock(openPorts[oracleIndex].message);
+    std::smatch match;
+    std::regex expression("[4][0-9][0-9][0-9]");
+    std::string tempStr;
+    std::sregex_iterator currentMatch(knockKnock.begin(), knockKnock.end(), expression);
+
+    // Used to determine if there are any more matches
+    std::sregex_iterator lastMatch;
+
+    // While the current match doesn't equal the last
+    while(currentMatch != lastMatch){
+        std::smatch match = *currentMatch;
+        std::cout << match.str() << std::endl; // DEBUG:
+        //std::string port(match.str());
+
+        openPort openPort;
+        openPort.initialize(atoi(match.str().c_str()));
+        //openPort.isFinalMessage = true;
+        lastMessage.push_back(openPort);
+        currentMatch++;
+    }
+    std::cout << std::endl;
+
     // DAGUR: oracle[oracleIndex].message segir okkur rodina push back a lastMessage vectorinn
 
     for(size_t i {0}; i < lastMessage.size(); ++i) {
         if(i == lastMessage.size() - 1) {
-            lastMessage[i].secretPhrase.append(secretPhrase);
+            lastMessage[i].isReceived = false;
+            lastMessage[i].secretPhrase = secretPhrase;
             lastMessage[i].isSecret = true;
+            lastMessage[i].isMasterOfTheUniverse = true;
         }
         else {
+            lastMessage[i].isReceived = false;
             lastMessage[i].isKnock = true;
         }
     }
@@ -294,6 +335,12 @@ int main(int argc, char* argv[]) {
     std::thread recvLast (recvUDPPacket, sourceAddress, std::ref(isSent), std::ref(lastMessage));
     sendLast.join();
     recvLast.join();
+
+    for(size_t i {0}; i < lastMessage.size(); ++i) {
+        if(lastMessage[i].isMasterOfTheUniverse) {
+            std::cout << "Final message " << lastMessage[i].message << std::endl; // DEBUG:
+        }
+    }
 
     // TODO:
     // FIXME:
@@ -564,14 +611,18 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
 
         data = datagram + sizeof(struct iphdr) + sizeof (struct udphdr);
 
-        if(openPorts[port].isLastStand) {
+        if(openPorts[port].isLastStand) { // Ef thetta er oracle payload
             strcpy(data, openPorts[port].payload.c_str());
         }
         else if (openPorts[port].isKnock) {
-            strcpy(data, "knock");
+            strcpy(data, "knock\n");
+            std::cout << data;
+            std::cout << "Knocking on port # " << openPorts[port].portNumber << " index " << port << std::endl;
         }
         else if (openPorts[port].isSecret) {
             strcpy(data, openPorts[port].secretPhrase.c_str());
+            std::cout << data;
+            std::cout << "Sending secret to port # " << openPorts[port].portNumber << " index " << port << std::endl;
         }
         else {
             strcpy(data, "aa");
@@ -662,7 +713,7 @@ void sendToOpenPorts(std::string destinationAddress, std::string sourceAddress, 
         }
 
         // COM: Packet getting sent.
-        for(int i {0}; i < 5; ++i) {
+        for(int i {0}; i < 3; ++i) {
             sendto(
                 sendSocket,
                 datagram,
@@ -826,6 +877,11 @@ void recvUDPPacket(std::string sourceAddress, bool &isSent, std::vector<openPort
                     }
                 }
 
+                if(openPorts[index].isFinalMessage && openPorts[index].isMasterOfTheUniverse) {
+                    openPorts[index].message = data;
+                    std::cout << "MasterOfTheUniverse set as true on port #: " << openPorts[index].portNumber << std::endl;
+                }
+
             }
 
         }
@@ -850,234 +906,3 @@ std::string getIP() {
     return ipNumbers.at(0);
 }
 
-// TODO: EVERYTHING BELOW THE LINE IS TRASH?? DELETE?!?
-void customSend(std::string destinationAddress, std::string sourceAddress, openPort &openPort, bool &isSent) {
-
-    int sendSocket {0};
-    char *data;
-
-
-    sockaddr_in socketAddress;
-    socketAddress.sin_family = AF_INET;
-    socketAddress.sin_port = htons(openPort.portNumber);
-    inet_pton(AF_INET, destinationAddress.c_str(), &socketAddress.sin_addr);
-
-    sendSocket = socket(
-        AF_INET,
-        SOCK_RAW,
-        IPPROTO_RAW
-    );
-
-    if(sendSocket < 0){
-        std::perror("### Create UDP_socket failed");
-    }
-
-
-    int val = 1;
-    int sockoption = setsockopt(sendSocket, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val));
-
-    if(sockoption < 0) {
-        perror("setsockopt HDRINCL_IP failed");
-        exit(0);
-    }
-
-    // ***** create header ****
-
-    //datagram til ad halda utan um pakkann
-    char datagram[8192] {0}, *pseudogram;
-
-    //IP og UDP header
-    struct iphdr *iph = (struct iphdr *) datagram;
-
-    struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct iphdr));
-
-    //pseudo header buinn til
-    struct pseudo_header psh;
-
-    //data sett aftan vid udp header
-    data = datagram + sizeof(struct iphdr) + sizeof (struct udphdr);
-
-    strcpy(data, "aa");
-
-    //Fill in the IP Header
-    iph->ihl = 5;
-    iph->version = 4;
-    iph->tos = 0;
-    iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data);
-    iph->id = htonl (54321); //Id of this packet - DOES NOT SEEM TO MATTER WHAT VALUE IS HERE. DYNAMIC???
-    if(openPort.isEvil) {
-        iph->frag_off |= htons(0x8000); // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
-    }
-    else {
-        iph->frag_off = 0; // EVILBIT GAURINN!!! SENDA SEM BIG-ENDIAN htons() 0x8000 > 0x00 0x80 (|=)
-    }
-    iph->ttl = 255;
-    iph->protocol = IPPROTO_UDP; // WHAT IS THE POINT OF THE SAME THING IN socket() ABOVE?????
-    iph->check = 0;      //Set to 0 before calculating checksum
-    iph->saddr = inet_addr (sourceAddress.c_str());    //Spoof the source ip address
-    iph->daddr = socketAddress.sin_addr.s_addr;
-
-    // IP checksum
-    iph->check = checksum ((unsigned short *) datagram, iph->tot_len);
-
-
-    // UDP header
-    udph->source = htons (50000);  //nota svarið frá Servernum til að búa til þetta, source portið verður destination port og öfugt
-    udph->dest = htons (openPort.portNumber);
-    udph->len = htons(8 + strlen(data)); //tcp header size
-    udph->check = 0; //leave checksum 0 now, filled later by pseudo header
-
-    // Now the UDP checksum using the pseudo header
-    psh.source_address = inet_addr(sourceAddress.c_str());
-    psh.dest_address = socketAddress.sin_addr.s_addr;
-    psh.placeholder = 0;
-    psh.protocol = IPPROTO_UDP;
-    psh.udp_length = htons(sizeof(struct udphdr) + strlen(data)); //herna tharf data ad vera 2
-
-
-
-    if(openPort.isChecksum) {
-        int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr);
-
-        //muna ad gera free
-        pseudogram = (char*) malloc(psize);
-
-        //pusla saman pseudoheader + UDP heade + data
-        memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-        memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr));
-
-        //Reikna ut UDP checksum
-        //Get the invert of checksum without data
-        short checksumUDP = ~(checksum((unsigned short*) pseudogram , psize));
-
-        //Invert of 0xf00d
-        unsigned short target = 0x0ff2;
-
-        //checksum should be
-        udph->check = htons(0xf00d);
-
-        //Calculate what data needs to be
-        short d = htons(target) - checksumUDP;
-
-        //set the data bytes to what it needs to be so checksum is 0xf00d
-        u_char as = d;
-        u_char af = (d >> 8);
-
-        data[0] = as;
-        data[1] = af;
-    }
-    else {
-        int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
-
-        //muna ad gera free
-        pseudogram = (char*) malloc(psize);
-
-        //pusla saman pseudoheader + UDP heade + data
-        memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-        memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
-
-        udph->check = checksum((unsigned short*) pseudogram , psize);
-    }
-
-
-
-    //send message
-    for(int i {0}; i < 5; ++i) {
-        sendto(
-            sendSocket,
-            datagram,
-            iph->tot_len,
-            MSG_CONFIRM,
-            (const struct sockaddr *) &socketAddress,
-            sizeof(socketAddress)
-        );
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    }
-
-    free(pseudogram);
-    isSent = true;
-}
-
-void customRecv(std::string sourceAddress, openPort &openPort, bool &isSent) {
-
-    int recvSocket {0};
-    int received {-1};
-    unsigned int received_len {0};
-    int bound {0};
-    char buffer[1024] {0};
-    char *data;
-
-    while (!isSent) {
-
-        sockaddr_in socketAddress;
-        socketAddress.sin_family = AF_INET;
-        socketAddress.sin_port = htons(50000);
-        inet_pton(AF_INET, sourceAddress.c_str(), &socketAddress.sin_addr);
-
-        recvSocket = socket(
-            AF_INET,
-            SOCK_RAW,
-            IPPROTO_UDP
-        );
-
-        if(recvSocket < 0){
-            std::perror("### Create socket failed");
-        }
-
-        bound = bind(
-            recvSocket,
-            (struct sockaddr *) &socketAddress,
-            sizeof(struct sockaddr_in)
-        );
-
-        if(bound < 0){
-            std::perror("### Failed to bind");
-        }
-
-
-        struct timeval timeout;
-        timeout.tv_sec = 2;
-        timeout.tv_usec = 0;
-
-        int setSockOpt = setsockopt(recvSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-
-        if(setSockOpt < 0){
-            std::perror("### Failed to set sock opt");
-        }
-
-        received = recvfrom(
-            recvSocket,
-            buffer,
-            1024,
-            0,
-            (struct sockaddr *) &socketAddress,
-            &received_len
-        );
-
-        if(received > 0) {
-
-            short * portPtr;
-
-            portPtr = (short *)&buffer[20];
-
-            int sourcePort = htons(*portPtr);
-
-            //convert-a data partinum i streng
-            data = buffer + sizeof(struct iphdr) + sizeof (struct udphdr);
-
-
-
-            if (openPort.isReceived == false) {
-                openPort.isReceived = true;
-
-                openPort.message = data;
-                std::cout << "Message from port no# " << std::dec << sourcePort << " is: " << std::endl;
-                std::cout << data << std::endl;
-            }
-
-        }
-
-        memset(buffer, 0, 1024);
-        received = -1;
-    }
-}

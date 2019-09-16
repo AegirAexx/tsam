@@ -2,8 +2,8 @@
 all: scanner
 
 #Compile scanner program
-server: scanner.cpp
-		g++ -O2 -Wall -std=gnu++17 -pthread scanner.cpp -o scanner
+scanner: scanner.cpp
+		g++ -O2 -Wall -std=gnu++11 -pthread scanner.cpp -o scanner
 
 #Uninstall
 clean:

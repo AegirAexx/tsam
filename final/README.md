@@ -61,7 +61,7 @@ Two shortcuts to run the program on skel.ru.is with different outputs:
 Flow of the program:
 
  TODO: FLOW OF THE PROGRAM IN A BRIEF SUMMARY
-
+ DAGUR:taka fram ad forritid okkar er undirbuid til ad lesa hverskonar ICMP skilabod eru ad berast
 ...the program then finishes and terminates gracefully. DAGUR:
 
 

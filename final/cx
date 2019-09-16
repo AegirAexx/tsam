@@ -15,4 +15,4 @@ Line[8]="I don't know about you people, but I don't wanna live in a world where 
 
 
 
-g++ -O2 -Wall -std=gnu++17 -pthread *.cpp -o u.out && echo "${Line[n]}" | cowsay | lolcat
+g++ -O2 -Wall -std=gnu++11 -pthread *.cpp -o scanner && echo "${Line[n]}" | cowsay | lolcat
