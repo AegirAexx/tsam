@@ -44,7 +44,6 @@ needed to execute.
 ├── project
     ├── makefile
     ├── run
-    ├── run_verbose
     ├── README.txt
     └── scanner.cpp
 ```
