@@ -1,0 +1,58 @@
+--------------------------
+Knocking on port#: 4000
+--------------------------
+Knocking on port#: 4000
+--------------------------
+-------LENGTH-------------
+UDP: -1
+ICMP: 89
+--------------------------
+---------ICMP-------------
+--------------------------
+------BYTE ARRAY----------
+45 00 00 59 78 B0 00 00 33 01 D7 34 82 D0 F3 3D
+C0 A8 01 09 03 03 34 F7 00 00 00 00 45 00 00 3D
+57 B0 40 00 34 11 B7 40 C0 A8 01 09 82 D0 F3 3D
+BC 2D 0F A0 00 29 79 BF 45 00 21 00 00 00 00 00
+FF 11 1D 5B C0 A8 01 09 82 D0 F3 3D A0 0F 0F A0
+00 0D D2 92 6B 6E 6F 63 6B 
+-------PACKET DUMP---------
+45 00 00 59 78 ffffffb0 00 00 33 01 ffffffd7 34 ffffff82 ffffffd0 fffffff3 3d | E..Yx...3..4...=
+ffffffc0 ffffffa8 01 09 03 03 34 fffffff7 00 00 00 00 45 00 00 3d | ......4.....E..=
+57 ffffffb0 40 00 34 11 ffffffb7 40 ffffffc0 ffffffa8 01 09 ffffff82 ffffffd0 fffffff3 3d | W.@.4..@.......=
+ffffffbc 2d 0f ffffffa0 00 29 79 ffffffbf 45 00 21 00 00 00 00 00 | .-...)y.E.!.....
+ffffffff 11 1d 5b ffffffc0 ffffffa8 01 09 ffffff82 ffffffd0 fffffff3 3d ffffffa0 0f 0f ffffffa0 | ...[.......=....
+00 0d ffffffd2 ffffff92 6b 6e 6f 63 6b                      | ....knock
+--------------------------
+
+
+--------------------------
+Knocking on port#: 4001
+--------------------------
+Knocking on port#: 4001
+--------------------------
+-------LENGTH-------------
+UDP: -1
+ICMP: 89
+--------------------------
+---------ICMP-------------
+--------------------------
+------BYTE ARRAY----------
+45 00 00 59 7A 0D 00 00 33 01 D5 D7 82 D0 F3 3D
+C0 A8 01 09 03 03 34 F7 00 00 00 00 45 00 00 3D
+58 5C 40 00 34 11 B6 94 C0 A8 01 09 82 D0 F3 3D
+C3 8A 0F A1 00 29 72 61 45 00 21 00 00 00 00 00
+FF 11 1D 5B C0 A8 01 09 82 D0 F3 3D A1 0F 0F A1
+00 0D D1 91 6B 6E 6F 63 6B 
+-------PACKET DUMP---------
+45 00 00 59 7a 0d 00 00 33 01 ffffffd5 ffffffd7 ffffff82 ffffffd0 fffffff3 3d | E..Yz...3......=
+ffffffc0 ffffffa8 01 09 03 03 34 fffffff7 00 00 00 00 45 00 00 3d | ......4.....E..=
+58 5c 40 00 34 11 ffffffb6 ffffff94 ffffffc0 ffffffa8 01 09 ffffff82 ffffffd0 fffffff3 3d | X\@.4..........=
+ffffffc3 ffffff8a 0f ffffffa1 00 29 72 61 45 00 21 00 00 00 00 00 | .....)raE.!.....
+ffffffff 11 1d 5b ffffffc0 ffffffa8 01 09 ffffff82 ffffffd0 fffffff3 3d ffffffa1 0f 0f ffffffa1 | ...[.......=....
+00 0d ffffffd1 ffffff91 6b 6e 6f 63 6b                      | ....knock
+--------------------------
+
+
+
+

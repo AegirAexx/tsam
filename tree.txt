@@ -1,0 +1,61 @@
+.
+├── custompacket
+│   ├── customPacket.cpp
+│   └── cx
+├── dagur
+│   ├── b
+│   ├── ble
+│   ├── clientAex.cpp
+│   ├── cx
+│   ├── debug_out.txt
+│   ├── debug.txt
+│   ├── kennari.c
+│   ├── run
+│   ├── run_debug
+│   ├── u.out
+│   └── x.txt
+├── dagur2
+│   ├── clientCstmPck.cpp
+│   ├── cx
+│   ├── kennari.c
+│   ├── tsam_af_netinu.c
+│   └── u
+├── final
+│   ├── cx
+│   ├── header.txt
+│   ├── makefile
+│   ├── README.txt
+│   ├── run
+│   ├── run_verbose
+│   └── scanner.cpp
+├── LICENSE.md
+├── README.md
+├── retardus
+│   ├── cx
+│   ├── run
+│   ├── run_debug
+│   ├── scannerR.cpp
+│   └── u.out
+├── scanner
+│   ├── clientUDP_v1-1.cpp
+│   └── cx
+├── take_two_part_three
+│   ├── cx
+│   ├── run
+│   ├── run_debug
+│   ├── scannerX.cpp
+│   └── u.out
+├── tardus_maximus
+│   ├── port_knocker.cpp
+│   ├── run
+│   ├── run_debug
+│   └── u.out
+├── tree.txt
+└── wip
+    ├── cx
+    ├── ip.txt
+    ├── kennari.c
+    ├── u.out
+    └── wip.cpp
+
+9 directories, 49 files

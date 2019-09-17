@@ -1,6 +1,0 @@
-#!/bin/bash
-
-LO="$1"
-HI="$2"
-
-sudo ./scanner 130.208.243.61 $1 $2 --verbose
