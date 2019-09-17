@@ -116,7 +116,7 @@ ICMP packet and a UDP message. Which we then write to the screen.
 
 
 ## Authors:
-Aegir Tomasson <aegir15@ru.is>
+Aegir Tomasson <aegir15@ru.is> <br>
 Dagur Kristjansson <dagur17@ru.is>
 
 
