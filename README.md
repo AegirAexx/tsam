@@ -16,7 +16,7 @@ on ports and delivering custom payloads we are able to get the oracle to reveal 
 secret.
 
 
-## SDependencies / Requirements:
+## Dependencies / Requirements:
 
 - POSIX compliant shell. Like bash or zsh.
 - coreutils.
@@ -116,8 +116,8 @@ ICMP packet and a UDP message. Which we then write to the screen.
 
 
 ## Authors:
-Aegir Tomasson <aegir15@ru.is> <br>
-Dagur Kristjansson <dagur17@ru.is>
+Aegir Tomasson (aegir15@ru.is) <br>
+Dagur Kristjansson (dagur17@ru.is)
 
 
 ## Teacher:
@@ -125,9 +125,8 @@ Jacky Mallett (jacky@ru.is)
 
 
 ## TA:
-Sandra Ros Hrefnu Jonsdottir
+Sandra Ros Hrefnu Jonsdottir  (sandrarj@ru.is)
 
-__Total time spent on project: 40 hours.__
 
 
 #### Disclaimer
@@ -138,3 +137,6 @@ the project a lot and some similarities in code could exist.
 
 Also we used the code that TA Einar Orn Sveinbjornsson shared. Our checksum calculating
 function and our send function is heavily unfluenced from that code.
+
+
+__Total time spent on project: 40 hours.__
